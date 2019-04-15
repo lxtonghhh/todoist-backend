@@ -22,8 +22,14 @@ def docs_to_list(docs):
 
 
 def make_dict_from(obj, *args, **kwargs) -> dict:
-    return {field: obj[field] for field in args}
+    return {field: obj.get(field, None) for field in args}
 
+def remove_none_from(obj) -> dict:
+    new={}
+    for key,value in obj.items():
+        if value is not None:
+            new[key]=value
+    return new
 
 class ProjectColl(object):
     """
@@ -41,7 +47,7 @@ class ProjectColl(object):
     @staticmethod
     def all_projects(conn, uid):
         coll = conn.get_coll("project_coll")
-        docs = coll.find(dict(uid=uid,status="doing"))
+        docs = coll.find(dict(uid=uid, status="doing"))
         return docs_to_list((docs))
 
     @staticmethod
@@ -75,7 +81,13 @@ class ProjectColl(object):
 
         new_project = {**dict(uid=uid),
                        **make_dict_from(info, "pid", "name", "status")}
-        coll.update(dict(uid=uid, pid=info['pid']), {"$set": new_project})
+        coll.update(dict(uid=uid, pid=info['pid']), {"$set": remove_none_from(new_project)})
+
+        if info['status']=='abort':
+            #删除相关任务
+            task_coll = conn.get_coll("task_coll")
+            task_coll.update_many(dict(uid=uid, pid=info['pid']), {"$set": {"status":"abort"}})
+
         return new_project
 
     @staticmethod
@@ -173,7 +185,7 @@ class TaskColl(object):
 
         new_task = {**dict(uid=uid),
                     **make_dict_from(info, "pid", "tid", "content", "ddl", "level", "status")}
-        coll.update(dict(uid=uid, pid=info['pid'], tid=info['tid']), {"$set": new_task})
+        coll.update(dict(uid=uid, pid=info['pid'], tid=info['tid']), {"$set": remove_none_from(new_task)})
         return new_task
 
     @staticmethod

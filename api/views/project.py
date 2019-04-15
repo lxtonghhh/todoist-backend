@@ -3,11 +3,15 @@ from common.response import fail
 from common.response import success
 from common.mongo import MongoDBBase
 from common.exceptions import CommonError, ValidationError
-from api.forms.project import ProjectAddForm, ProjectUpdateForm,TaskAddForm,TaskUpdateForm
+from api.forms.project import ProjectAddForm, ProjectUpdateForm, TaskAddForm, TaskUpdateForm
 import datetime
 from django.views.decorators.http import require_http_methods
 from api.mongo_manager import ProjectColl, TaskColl
 from conf.settings import MONGODB_CONFIG
+
+
+def make_dict_from(obj, *args, **kwargs) -> dict:
+    return {field: obj[field] for field in args}
 
 
 def get_response_content(content_items):
@@ -45,10 +49,11 @@ def add_project(request):
     try:
         mongo_conn = MongoDBBase(config=MONGODB_CONFIG)
         data = ProjectAddForm(request).validate()
-        add_pid = ProjectColl.add_project(conn=mongo_conn, uid=data.info, info=data.info)
+        add_pid = ProjectColl.add_project(conn=mongo_conn, uid=data.uid, info=data.info)
     except (CommonError, ValidationError) as e:
         return fail(sc=e.sc, msg=e.msg)
-    return success(data=dict(content={"pid": add_pid}))
+    return success(data=dict(pid=add_pid))
+
 
 @require_http_methods(['POST'])
 def update_project(request):
@@ -61,6 +66,7 @@ def update_project(request):
         return fail(sc=e.sc, msg=e.msg)
     return success(data=dict())
 
+
 @require_http_methods(['POST'])
 def add_task(request):
     print('api:all_tasks')
@@ -70,7 +76,7 @@ def add_task(request):
         new_task = TaskColl.add_task(conn=mongo_conn, uid=data.uid, info=data.info)
     except (CommonError, ValidationError) as e:
         return fail(sc=e.sc, msg=e.msg)
-    return success(data=dict(tid=new_task['tid']))
+    return success(data=make_dict_from(new_task, 'uid', 'pid', 'tid', 'level', 'status'))
 
 
 @require_http_methods(['POST'])
