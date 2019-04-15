@@ -14,6 +14,19 @@ class ProjectAddForm(SimpleInputValidation):
         self.args['info'] = {field: self.args[field] for field in ['uid', 'name']}
 
 
+class ProjectUpdateForm(SimpleInputValidation):
+    require = dict(
+        uid=LENGTH(1, 64),
+        pid=LENGTH(1, 64),
+        name=LENGTH(1, 64),
+        status=ENUM(["doing", "finish", "abort", "expire", "forever"]),
+    )
+
+    def validate_after(self):
+        self.args['info'] = {field: self.args[field] for field in
+                             ['uid', 'pid', 'name', 'status']}
+
+
 class TaskAddForm(SimpleInputValidation):
     require = dict(
         uid=LENGTH(1, 64),

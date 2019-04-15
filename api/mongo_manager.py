@@ -41,7 +41,7 @@ class ProjectColl(object):
     @staticmethod
     def all_projects(conn, uid):
         coll = conn.get_coll("project_coll")
-        docs = coll.find(dict(uid=uid))
+        docs = coll.find(dict(uid=uid,status="doing"))
         return docs_to_list((docs))
 
     @staticmethod
@@ -59,6 +59,24 @@ class ProjectColl(object):
             info['name'] = "收件箱"
         coll.insert(dict(uid=uid, pid=pid, name=info['name'], status="doing"))
         return pid
+
+    @staticmethod
+    def update_project(conn, uid, info):
+        """
+
+        :param conn:
+        :param uid:
+        :param info: {"name":"xxx","pid":"0","status":"doing"}
+        :return:
+        """
+        coll = conn.get_coll("project_coll")
+        if not ProjectColl.check_pid(conn, uid, info['pid']):
+            raise CommonError(msg="项目{pid}不存在".format(pid=info['pid']))
+
+        new_project = {**dict(uid=uid),
+                       **make_dict_from(info, "pid", "name", "status")}
+        coll.update(dict(uid=uid, pid=info['pid']), {"$set": new_project})
+        return new_project
 
     @staticmethod
     def check_pid(conn, uid, pid):
@@ -171,7 +189,7 @@ class TaskColl(object):
         coll = conn.get_coll("task_coll")
         citems = []
         for project in projects:
-            docs = coll.find(dict(uid=uid, pid=project['pid'],status="doing"))
+            docs = coll.find(dict(uid=uid, pid=project['pid'], status="doing"))
             tasks = docs_to_list(docs)
             citems.append({**dict(tasks=tasks), **make_dict_from(project, 'pid', 'name')})
         return citems

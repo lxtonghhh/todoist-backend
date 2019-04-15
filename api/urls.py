@@ -7,6 +7,7 @@ from api.views import project
 urlpatterns = [
     # 通用接口
     path("project/add", project.add_project),
+    path("project/update", project.update_project),
     path("task/my", project.all_tasks),
     path("task/add", project.add_task),
     path("task/update", project.update_task),
