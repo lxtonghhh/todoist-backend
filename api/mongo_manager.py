@@ -1,6 +1,8 @@
 import datetime
 from common.util import add_to_dict
 from common.exceptions import CommonError
+from api.sdk.oss import get_tmp_token, check_object_exist, UPLOAD_AK_EXPIRE, get_access_key_id, get_policy_base64, \
+    get_signature, get_upload_url
 
 ASCENDING = 1
 
@@ -24,12 +26,14 @@ def docs_to_list(docs):
 def make_dict_from(obj, *args, **kwargs) -> dict:
     return {field: obj.get(field, None) for field in args}
 
+
 def remove_none_from(obj) -> dict:
-    new={}
-    for key,value in obj.items():
+    new = {}
+    for key, value in obj.items():
         if value is not None:
-            new[key]=value
+            new[key] = value
     return new
+
 
 class ProjectColl(object):
     """
@@ -83,10 +87,10 @@ class ProjectColl(object):
                        **make_dict_from(info, "pid", "name", "status")}
         coll.update(dict(uid=uid, pid=info['pid']), {"$set": remove_none_from(new_project)})
 
-        if info['status']=='abort':
-            #删除相关任务
+        if info['status'] == 'abort':
+            # 删除相关任务
             task_coll = conn.get_coll("task_coll")
-            task_coll.update_many(dict(uid=uid, pid=info['pid']), {"$set": {"status":"abort"}})
+            task_coll.update_many(dict(uid=uid, pid=info['pid']), {"$set": {"status": "abort"}})
 
         return new_project
 
@@ -230,3 +234,99 @@ class TaskIdColl(object):
         else:
             coll.insert(dict(uid=uid, pid=pid, next_tid="1"))
             return "0"
+
+
+class UploadApplyColl(object):
+    """
+    #db:todoist
+    coll: 'upload_apply_coll'上传申请commit_id表
+    "uid": "xxx"->所属人
+    "pid": "1"->所属项目
+    "tid":"0"->任务id
+    "next_commit_id":"0"->下一可用commit_id
+
+    """
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def apply(conn, uid, pid, tid, info):
+        def get_url_dict_from_oss(uid, pid, tid, commit_id, apply_type, apply_method):
+            """
+            :return:
+            {
+                "commit_id": "1",
+                "type": "jpg",
+                "url": "https://storage.swarmart.cn/collect%2Fwc_1%2Fwuid_89edc7b93f27fc990d943e1bfa4%2F40%2F3?OSSAccessKeyId=LTAIAVwi7Mh67lZm&Expires=1545207688&Signature=H83QSG3Mov14xsEkr1cgEE9To3I%3D",
+                "object_key": "source/admin/pid_1/tid_1/commit_id_1.jpg"
+            },
+            """
+
+            def url_host_parse(raw_url, raw_host='http://sm-breeze-01.oss-cn-shenzhen.aliyuncs.com'):
+                """
+                :param raw_url:
+                http://sm-breeze-01.oss-cn-shenzhen.aliyuncs.com/collect%2Fwc_1%2Fwuid_89edc7b93f27fc990d943e1bfa4%2F12%2F3?OSSAccessKeyId=LTAIflnsujl3IR7p&Expires=1545040756&Signature=Ofsa7Oxf33NWZWjbvdswRCFt9Jc%3D
+                :return:
+                https://storage.swarmart.cn/collect/wc_1/wuid_liuzeduo/22/3?OSSAccessKeyId=LTAI6EwWqDU6NYZj&Expires=1533009251&Signature=haIUNIrdmf%2BTi9iqFcdaSXa8zcQ%3D
+                """
+                HOST = "https://storage.swarmart.cn"
+                new = raw_url.replace(raw_host, HOST)
+                print(new)
+                return new
+
+            object_key = f'source/{uid}/{pid}/{tid}/{commit_id}.{apply_type}'.format(tid=tid, pid=pid, uid=uid,
+                                                                                     commit_id=commit_id,
+                                                                                     apply_type=apply_type)
+            # 获取PUT上传的url
+            raw_url = get_tmp_token(object_name=object_key, method='PUT', ak_expire=UPLOAD_AK_EXPIRE)
+            upload_url = url_host_parse(raw_url)
+            return dict(commit_id=commit_id, type=apply_type, url=upload_url, object_key=object_key)
+
+        if not TaskColl.check_tid(conn, uid, pid, tid):
+            raise CommonError(msg="任务{tid}不存在".format(tid=info['tid']))
+        coll = conn.get_coll("upload_apply_coll")
+        doc = coll.find_one(dict(uid=uid, pid=pid, tid=tid))
+        apply_num = info['num']
+        apply_method = info['method']
+        if doc:
+            start = int(doc['next_commit_id'])
+            coll.update(dict(uid=uid, pid=pid, tid=tid), {"$set": {"next_commit_id": str(start + apply_num)}})
+        else:
+            start = 0
+            coll.insert(dict(uid=uid, pid=pid, tid=tid, next_commit_id=str(start + apply_num)))
+        commit_ids = [start + i for i in range(apply_num)]
+        citems = [get_url_dict_from_oss(uid, pid, tid, commit_id, apply_type='jpg', apply_method=apply_method) for commit_id in
+                  commit_ids]
+        UploadCheckColl.to_check(conn, uid, pid, tid, commit_ids)
+        return citems
+
+
+class UploadCheckColl(object):
+    """
+    #db:todoist
+    coll: 'upload_check_coll'上传检查commit_id表
+    "uid": "xxx"->所属人
+    "pid": "1"->所属项目
+    "tid":"0"->任务id
+    "commit_id":"0"->已被申请的commit_id
+    "res":-1/0/1
+
+    """
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def to_check(conn, uid, pid, tid, commit_ids: list):
+        """
+        默认 uid, pid, tid 合法 commit_ids不重复
+        :param conn:
+        :param uid:
+        :param pid:
+        :param tid:
+        :param commit_ids:[int]
+        :return:
+        """
+        coll = conn.get_coll("upload_check_coll")
+        coll.insert([dict(uid=uid, pid=pid, tid=tid, commit_id=i, res=0) for i in commit_ids])

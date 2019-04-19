@@ -22,4 +22,16 @@ coll: 'project_id_coll'任务id表
     "uid": "xxx"->所属人
     "pid": "1"->所属项目
     "next_tid":"0"->任务id
+
+coll: 'upload_apply_coll'上传申请commit_id表
+    "uid": "xxx"->所属人
+    "pid": "1"->所属项目
+    "tid":"0"->任务id
+    "next_commit_id":"0"->下一可用commit_id
+coll: 'upload_check_coll'上传检查commit_id表
+    "uid": "xxx"->所属人
+    "pid": "1"->所属项目
+    "tid":"0"->任务id
+    "commit_id":"0"->已被申请的commit_id
+    "res":-1/0/1
 '''

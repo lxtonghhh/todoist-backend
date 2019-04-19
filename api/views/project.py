@@ -14,23 +14,6 @@ def make_dict_from(obj, *args, **kwargs) -> dict:
     return {field: obj[field] for field in args}
 
 
-def get_response_content(content_items):
-    """
-    :param content_items: {}
-    :return:
-        {
-        "content":[
-        citem1,citem2,...]
-        }
-    """
-    result = {}
-    c = []
-    for item in content_items:
-        c.append(item)
-    result['content'] = c
-    return result
-
-
 @require_http_methods(['GET'])
 def all_tasks(request):
     print('api:all_tasks')

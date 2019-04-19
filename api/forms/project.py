@@ -72,3 +72,23 @@ class TaskUpdateForm(SimpleInputValidation):
             self.args['ddl'] = None
         self.args['info'] = {field: self.get(field) for field in
                              ['uid', 'pid', 'content', 'ddl', 'tid', 'level', 'status']}
+
+
+class UploadApplyForm(SimpleInputValidation):
+    require = dict(
+        uid=LENGTH(1, 64),
+        pid=LENGTH(1, 64),
+        tid=LENGTH(1, 64),
+    )
+    not_require = dict(
+        num=INTEGER,
+        method=ENUM(["put", "post"]),
+    )
+
+    def validate_after(self):
+        if not self.get('num'):
+            self.args['num'] = 1
+        if not self.get('method'):
+            self.args['method'] = "put"
+        self.args['info'] = {field: self.get(field) for field in
+                             ['uid', 'pid', 'tid', 'num', 'method']}
