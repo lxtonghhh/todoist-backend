@@ -280,7 +280,7 @@ class UploadApplyColl(object):
                                                                                      apply_type=apply_type)
             # 获取PUT上传的url
             raw_url = get_tmp_token(object_name=object_key, method='PUT', ak_expire=UPLOAD_AK_EXPIRE)
-            upload_url = url_host_parse(raw_url)
+            upload_url = raw_url  # url_host_parse(raw_url)
             return dict(commit_id=commit_id, type=apply_type, url=upload_url, object_key=object_key)
 
         if not TaskColl.check_tid(conn, uid, pid, tid):
@@ -295,8 +295,9 @@ class UploadApplyColl(object):
         else:
             start = 0
             coll.insert(dict(uid=uid, pid=pid, tid=tid, next_commit_id=str(start + apply_num)))
-        commit_ids = [start + i for i in range(apply_num)]
-        citems = [get_url_dict_from_oss(uid, pid, tid, commit_id, apply_type='jpg', apply_method=apply_method) for commit_id in
+        commit_ids = [str(start + i) for i in range(apply_num)]
+        citems = [get_url_dict_from_oss(uid, pid, tid, commit_id, apply_type='jpg', apply_method=apply_method) for
+                  commit_id in
                   commit_ids]
         UploadCheckColl.to_check(conn, uid, pid, tid, commit_ids)
         return citems
@@ -325,8 +326,45 @@ class UploadCheckColl(object):
         :param uid:
         :param pid:
         :param tid:
-        :param commit_ids:[int]
+        :param commit_ids:[str]
         :return:
         """
         coll = conn.get_coll("upload_check_coll")
         coll.insert([dict(uid=uid, pid=pid, tid=tid, commit_id=i, res=0) for i in commit_ids])
+
+    @staticmethod
+    def do_check(conn, uid, pid, tid, commit_ids: list):
+        """
+        紧跟申请apply调用 commit_id必定要存在
+        :param conn:
+        :param uid:
+        :param pid:
+        :param tid:
+        :param commit_ids:[str]
+        :return:[{"commit_id":"1","res":1}]
+        """
+
+        def check_object_exist_from_oss(uid, pid, tid, commit_id):
+            object_key = f'source/{uid}/{pid}/{tid}/{commit_id}.jpg'.format(tid=tid, pid=pid, uid=uid,
+                                                                            commit_id=commit_id)
+            try:
+                if not check_object_exist(object_key=object_key):
+                    return -1
+                else:
+                    return 1
+            except:
+                return 0
+
+        if not TaskColl.check_tid(conn, uid, pid, tid):
+            raise CommonError(msg="任务{tid}不存在".format(tid=tid))
+        coll = conn.get_coll("upload_check_coll")
+        citems = []
+        for commit_id in commit_ids:
+            doc = coll.find_one(dict(uid=uid, pid=pid, tid=tid, commit_id=commit_id))
+            if not doc:
+                raise CommonError(msg="commit_id {commit_id}不存在".format(commit_id=commit_id))
+            else:
+                res = check_object_exist_from_oss(uid, pid, tid, commit_id)
+                citems.append(dict(commit_id=commit_id, res=res))
+                coll.update(dict(uid=uid, pid=pid, tid=tid, commit_id=commit_id), {"$set": {"res": res}})
+        return citems

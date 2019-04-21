@@ -12,5 +12,6 @@ urlpatterns = [
     path("task/add", project.add_task),
     path("task/update", project.update_task),
     path("source/apply", source.upload_apply),
+    path("source/check", source.upload_check),
 
 ]

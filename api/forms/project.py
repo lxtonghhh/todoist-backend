@@ -92,3 +92,20 @@ class UploadApplyForm(SimpleInputValidation):
             self.args['method'] = "put"
         self.args['info'] = {field: self.get(field) for field in
                              ['uid', 'pid', 'tid', 'num', 'method']}
+
+
+class UploadCheckForm(SimpleInputValidation):
+    require = dict(
+        uid=LENGTH(1, 64),
+        pid=LENGTH(1, 64),
+        tid=LENGTH(1, 64),
+        content=LIST_CONTENT_TYPE(str)
+    )
+    not_require = dict(
+        num=INTEGER,
+        method=ENUM(["put", "post"]),
+    )
+
+    def validate_after(self):
+        self.args['info'] = {field: self.get(field) for field in
+                             ['uid', 'pid', 'tid', 'content']}
