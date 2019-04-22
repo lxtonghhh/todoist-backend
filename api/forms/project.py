@@ -58,6 +58,7 @@ class TaskUpdateForm(SimpleInputValidation):
         content=LENGTH(1, 128),
         ddl=LENGTH(1, 128),  # "2019/4/15"
         level=ENUM(["1", "2", "3", "4"]),
+        info=DICT,
     )
 
     def validate_after(self):
@@ -71,7 +72,7 @@ class TaskUpdateForm(SimpleInputValidation):
         else:
             self.args['ddl'] = None
         self.args['info'] = {field: self.get(field) for field in
-                             ['uid', 'pid', 'content', 'ddl', 'tid', 'level', 'status']}
+                             ['uid', 'pid', 'content', 'ddl', 'tid', 'level', 'status', 'info']}
 
 
 class UploadApplyForm(SimpleInputValidation):

@@ -46,14 +46,15 @@ def get_upload_url():
 def get_policy_base64(expire_second=600):
     try:
         # 1 构建一个Post Policy
-        #注意时间格式 ISO8601
-        expire = (datetime.datetime.now() + datetime.timedelta(seconds=expire_second)).isoformat(timespec='seconds')+'Z'
+        # 注意时间格式 ISO8601
+        expire = (datetime.datetime.now() + datetime.timedelta(seconds=expire_second)).isoformat(
+            timespec='seconds') + 'Z'
         print(expire)
         policy = "{\"expiration\":\"%s\",\"conditions\":[[\"content-length-range\", 0, 104857600]]}" % expire
         print("policy: %s" % policy)
         # 2 将Policy字符串进行base64编码
         base64policy = convert_base64(bytes(policy, encoding='utf8'))
-        base64policy=str(base64policy, encoding='utf8')
+        base64policy = str(base64policy, encoding='utf8')
         print("base64_encode_policy: %s" % base64policy)
         """
         # 3 用OSS的AccessKeySecret对编码后的Policy进行签名
@@ -95,6 +96,10 @@ def get_tmp_token(object_name, method='GET', ak_expire=AK_EXPIRE):
     except:
         print(f'oss获取对象:{object_name}的临时token失败')
         raise Exception(f'oss获取对象:{object_name}的临时token失败')
+
+
+def get_oss_host():
+    return EndPoint + '/' + BucketName + '/'
 
 
 def check_object_exist(object_key):

@@ -4,6 +4,9 @@ def remove_none_from(obj) -> dict:
         if value is not None:
             new[key]=value
     return new
+
+def make_dict_from(obj:dict =None, *args, **kwargs) -> dict:
+    return {field: obj.get(field, None) for field in args}
 if __name__=='__main__':
-    o={"age":0,"gen":"1","name":None}
-    print(remove_none_from(o),o)
+    item={"age":0,"gen":"1","name":None}
+    print(make_dict_from(item, *['f','a']))
