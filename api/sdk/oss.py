@@ -4,7 +4,8 @@ import base64
 import hmac
 from optparse import OptionParser
 import third.oss2 as oss2
-from conf.settings import AccessKeyId, AccessKeySecret, EndPoint, BucketName, AK_EXPIRE, UPLOAD_AK_EXPIRE
+from conf.settings import AccessKeyId, AccessKeySecret, EndPoint, BucketName, UPLOAD_AK_EXPIRE, AK_EXPIRE, \
+    ThirdLevelRemainName
 import datetime
 
 
@@ -98,8 +99,20 @@ def get_tmp_token(object_name, method='GET', ak_expire=AK_EXPIRE):
         raise Exception(f'oss获取对象:{object_name}的临时token失败')
 
 
+"https://sm-breeze-public.oss-cn-shenzhen.aliyuncs.com/source/admin/1/0/6.jpg"
+"https://oss-cn-shenzhen.aliyuncs.com/sm-breeze-public/source/admin/1/0/6.jpg"
+
+
 def get_oss_host():
-    return EndPoint + '/' + BucketName + '/'
+    """
+    EndPoint = 'https://oss-cn-shenzhen.aliyuncs.com'
+    BucketName = 'sm-breeze-public'
+    ThirdLevelRemainName='oss-cn-shenzhen'
+    right access oss_host:
+        https://sm-breeze-public.oss-cn-shenzhen.aliyuncs.com/source/admin/1/0/6.jpg
+    :return:
+    """
+    return "https://" + BucketName + '.' + ThirdLevelRemainName + '.aliyuncs.com/'
 
 
 def check_object_exist(object_key):

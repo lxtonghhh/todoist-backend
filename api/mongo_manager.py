@@ -311,7 +311,7 @@ class UploadApplyColl(object):
                 https://storage.swarmart.cn/collect/wc_1/wuid_liuzeduo/22/3?OSSAccessKeyId=LTAI6EwWqDU6NYZj&Expires=1533009251&Signature=haIUNIrdmf%2BTi9iqFcdaSXa8zcQ%3D
                 """
                 HOST = "https://storage.swarmart.cn"
-                new = raw_url.replace(raw_host, HOST)
+                new = 'https' + raw_url[4:]
                 print(new)
                 return new
 
