@@ -1,3 +1,4 @@
+from bson.objectid import ObjectId
 def remove_none_from(obj) -> dict:
     new={}
     for key,value in obj.items():
@@ -5,8 +6,11 @@ def remove_none_from(obj) -> dict:
             new[key]=value
     return new
 
-def make_dict_from(obj:dict =None, *args, **kwargs) -> dict:
-    return {field: obj.get(field, None) for field in args}
+
+def make_dict_from(obj, *args, **kwargs) -> dict:
+    return {field: obj.get(field, None) if field != "id" else str(obj.get('_id', None)) for field in args}
+
 if __name__=='__main__':
-    item={"age":0,"gen":"1","name":None}
-    print(make_dict_from(item, *['f','a']))
+    item={"_id":ObjectId("1234"),"age":0,"gen":"1","name":None}
+    print(make_dict_from(item, *['id','f','age']))
+    print([]==None)

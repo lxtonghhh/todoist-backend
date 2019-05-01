@@ -42,5 +42,13 @@ coll: 'question_coll'题目表
     "tid":"0"->任务id
     "qid":"0"->同上传后的commit_id
     "url":"xxx"
+    "info":dict ->题目/一张图片的整体信息
+coll: 'question_info_coll'题目子题详情表
+    "uid": "xxx"->所属人
+    "pid": "1"->所属项目
+    "tid":"0"->任务id
+    "qid":"0"->同上传后的commit_id
+    "info":{}
+    "content":{"nodes":[],"lines":[]}视类型而定
 
 '''

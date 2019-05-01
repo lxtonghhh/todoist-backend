@@ -3,6 +3,7 @@ from common.util import add_to_dict
 from common.exceptions import CommonError
 from api.sdk.oss import get_tmp_token, check_object_exist, UPLOAD_AK_EXPIRE, get_access_key_id, get_policy_base64, \
     get_signature, get_oss_host
+from bson.objectid import ObjectId
 
 ASCENDING = 1
 
@@ -17,9 +18,13 @@ def docs_to_list(docs, fields: list = None):
     citems = []
     if docs.count() > 0:
         for item in docs:
-            if fields:
+            if len(fields) > 0:
                 new = make_dict_from(item, *fields)
                 citems.append(new)
+            elif len(fields) == 0:
+                item['id'] = str(item['_id'])
+                del item['_id']
+                citems.append(item)
             else:
                 del item['_id']
                 citems.append(item)
@@ -29,7 +34,7 @@ def docs_to_list(docs, fields: list = None):
 
 
 def make_dict_from(obj, *args, **kwargs) -> dict:
-    return {field: obj.get(field, None) for field in args}
+    return {field: obj.get(field, None) if field != "id" else str(obj.get('_id', None)) for field in args}
 
 
 def remove_none_from(obj) -> dict:
@@ -220,6 +225,22 @@ class TaskColl(object):
             citems.append({**dict(tasks=tasks), **make_dict_from(project, 'pid', 'name')})
         return citems
 
+    @staticmethod
+    def one_task(conn, uid, pid, tid):
+        """
+        :param conn:
+        :param uid:
+        :param projects:
+        :return:
+        [{"pid":"1","name":"欢迎","tasks":[]}]
+        """
+        coll = conn.get_coll("task_coll")
+        doc = coll.find_one(dict(uid=uid, pid=pid, tid=tid))
+        if doc:
+            return doc['info']
+        else:
+            raise CommonError(msg="任务{tid}不存在".format(tid=tid))
+
 
 class TaskIdColl(object):
     """
@@ -255,6 +276,7 @@ class QuestionColl(object):
     "tid":"0"->任务id
     "qid":"0"->同上传后的commit_id
     "url":"xxx"
+    "info":dict ->题目/一张图片的整体信息
     """
 
     def __init__(self):
@@ -264,16 +286,98 @@ class QuestionColl(object):
     def all_questions(conn, uid, pid, tid):
         coll = conn.get_coll("question_coll")
         docs = coll.find(dict(uid=uid, pid=pid, tid=tid))
-        return docs_to_list(docs, fields=['qid', 'url'])
+        return docs_to_list(docs, fields=['qid', 'url', 'info'])
 
     @staticmethod
-    def add_question(conn, uid, pid, tid, qid, url):
+    def add_question(conn, uid, pid, tid, qid, url, info):
         """
         默认uid, pid, tid合法 qid为commit_id唯一但不一定连续
         """
         print(qid)
         coll = conn.get_coll("question_coll")
-        coll.update(dict(uid=uid, pid=pid, tid=tid, qid=qid), {"$set": {"url": url}}, upsert=True)
+        coll.update(dict(uid=uid, pid=pid, tid=tid, qid=qid), {"$set": {"url": url, "info": info}}, upsert=True)
+
+    @staticmethod
+    def one_question(conn, uid, pid, tid, qid):
+        coll = conn.get_coll("question_coll")
+        doc = coll.find_one(dict(uid=uid, pid=pid, tid=tid, qid=qid))
+        if not doc:
+            raise CommonError(msg="题目{qid}不存在".format(qid=qid))
+        return doc
+
+    @staticmethod
+    def check_qid(conn, uid, pid, tid, qid):
+        coll = conn.get_coll("question_coll")
+        doc = coll.find_one(dict(uid=uid, pid=pid, tid=tid, qid=qid))
+        if doc:
+            return True
+        else:
+            return False
+
+
+class QuestionInfoColl(object):
+    """
+    #db:todoist
+    coll: 'question_info_coll'题目子题详情表
+    "uid": "xxx"->所属人
+    "pid": "1"->所属项目
+    "tid":"0"->任务id
+    "qid":"0"->同上传后的commit_id
+    "info":{}
+    "content":{"nodes":[],"lines":[]}视类型而定
+    """
+
+    @staticmethod
+    def all_sub_questions(conn, uid, pid, tid, qid):
+        """
+        返回问题下所有子问题
+        """
+        coll = conn.get_coll("question_info_coll")
+        if not TaskColl.check_tid(conn, uid, pid, tid):
+            raise CommonError(msg="任务{tid}不存在".format(tid=tid))
+        docs = coll.find(dict(uid=uid, pid=pid, tid=tid, qid=qid))
+        return docs_to_list(docs, fields=['id', 'info', 'content'])
+
+    @staticmethod
+    def update_question(conn, uid, pid, tid, qid, question_info, new_items):
+        """
+        默认uid, pid, tid合法 qid为commit_id唯一但不一定连续
+        更新ObjectId对应的doc 无id字段视为新增  未涉及的doc被删除
+        ->删除所有并替换
+        :param question_info:{} 题目/一张图片的整体信息
+        :param new_items:[
+            {
+                "id": "0",
+                "info": {},
+                "content": {
+                    "nodes": [],
+                    "lines": []
+                }
+            },
+            {
+                "id": "1",
+                "info": {},
+                "content": {
+                    "nodes": [],
+                    "lines": []
+                }
+            }
+        ]
+        :return:  {"id":"ObjectId()","info":{},"content":{"nodes":[],"lines":[]}}
+        """
+
+        if not new_items:
+            return
+        if not QuestionColl.check_qid(conn, uid, pid, tid, qid):
+            raise CommonError(msg="问题{qid}不存在".format(qid=qid))
+        if question_info:
+            coll = conn.get_coll("question_coll")
+            coll.update(dict(uid=uid, pid=pid, tid=tid, qid=qid), {"$set": {"info": question_info}})
+        coll = conn.get_coll("question_info_coll")
+        # todo id意为之前存在的_id 冗余字段
+        delete_num = coll.delete_many(dict(uid=uid, pid=pid, tid=tid, qid=qid))
+        insert_num = coll.insert_many(new_items)
+        return dict(delete_num=delete_num, insert_num=insert_num)
 
 
 class UploadApplyColl(object):
@@ -408,7 +512,7 @@ class UploadCheckColl(object):
                 result = check_object_exist_from_oss(uid, pid, tid, commit_id)
                 if result[0] == 1:
                     # 上传成功的资源被添加为题目
-                    QuestionColl.add_question(conn, uid, pid, tid, qid=commit_id, url=result[1])
+                    QuestionColl.add_question(conn, uid, pid, tid, qid=commit_id, url=result[1], info=None)
                 else:
                     pass
                 citems.append(dict(commit_id=commit_id, res=result[0], url=result[1]))

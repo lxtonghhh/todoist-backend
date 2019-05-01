@@ -1,6 +1,6 @@
 # coding: utf-8
 from django.urls import path
-from api.views import project,source
+from api.views import project, source, question
 
 # api_va接口
 
@@ -13,5 +13,7 @@ urlpatterns = [
     path("task/update", project.update_task),
     path("source/apply", source.upload_apply),
     path("source/check", source.upload_check),
-
+    path("source/upload", source.direct_upload),
+    path("question/info", question.question_info),
+    path("question/commit", question.update_question)
 ]
