@@ -21,12 +21,14 @@ def question_info(request):
         data = QuestionForm(request).validate()
         question_content = QuestionInfoColl.all_sub_questions(conn=mongo_conn, uid=data.uid, pid=data.pid, tid=data.tid,
                                                               qid=data.qid)
-        question_info = QuestionColl.one_question(conn=mongo_conn, uid=data.uid, pid=data.pid, tid=data.tid,
-                                                  qid=data.qid)['info']
+
+        question = QuestionColl.one_question(conn=mongo_conn, uid=data.uid, pid=data.pid, tid=data.tid,
+                                             qid=data.qid)
+        url, info = question['url'], question['info']
     except (CommonError, ValidationError) as e:
         return fail(sc=e.sc, msg=e.msg)
     return success(
-        data=dict(uid=data.uid, pid=data.pid, tid=data.tid, qid=data.qid, info=question_info, content=question_content))
+        data=dict(uid=data.uid, pid=data.pid, tid=data.tid, qid=data.qid, url=url, info=info, content=question_content))
 
 
 @require_http_methods(['POST'])
@@ -35,9 +37,8 @@ def update_question(request):
     try:
         mongo_conn = MongoDBBase(config=MONGODB_CONFIG)
         data = QuestionUpdateForm(request).validate()
-        result = QuestionInfoColl.update_question(conn=mongo_conn, uid=data.uid, pid=data.pid, tid=data.tid,
-                                                  qid=data.qid, question_info=data.info, new_items=data.content)
+        QuestionInfoColl.update_question(conn=mongo_conn, uid=data.uid, pid=data.pid, tid=data.tid,
+                                         qid=data.qid, question_info=data.info, new_items=data.content)
     except (CommonError, ValidationError) as e:
         return fail(sc=e.sc, msg=e.msg)
-    return success(
-        data=dict(uid=data.uid, pid=data.pid, tid=data.tid, qid=data.qid, info=question_info, content=question_content))
+    return success()

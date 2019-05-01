@@ -18,7 +18,10 @@ def docs_to_list(docs, fields: list = None):
     citems = []
     if docs.count() > 0:
         for item in docs:
-            if len(fields) > 0:
+            if not fields:
+                del item['_id']
+                citems.append(item)
+            elif len(fields) > 0:
                 new = make_dict_from(item, *fields)
                 citems.append(new)
             elif len(fields) == 0:
@@ -26,8 +29,8 @@ def docs_to_list(docs, fields: list = None):
                 del item['_id']
                 citems.append(item)
             else:
-                del item['_id']
-                citems.append(item)
+                pass
+
     else:
         pass
     return citems
@@ -333,8 +336,8 @@ class QuestionInfoColl(object):
         返回问题下所有子问题
         """
         coll = conn.get_coll("question_info_coll")
-        if not TaskColl.check_tid(conn, uid, pid, tid):
-            raise CommonError(msg="任务{tid}不存在".format(tid=tid))
+        if not QuestionColl.check_qid(conn, uid, pid, tid, qid):
+            raise CommonError(msg="问题{qid}不存在".format(qid=qid))
         docs = coll.find(dict(uid=uid, pid=pid, tid=tid, qid=qid))
         return docs_to_list(docs, fields=['id', 'info', 'content'])
 
@@ -345,7 +348,7 @@ class QuestionInfoColl(object):
         更新ObjectId对应的doc 无id字段视为新增  未涉及的doc被删除
         ->删除所有并替换
         :param question_info:{} 题目/一张图片的整体信息
-        :param new_items:[
+        :param new_items:[ id意为之前存在的_id 冗余无用字段
             {
                 "id": "0",
                 "info": {},
@@ -375,9 +378,10 @@ class QuestionInfoColl(object):
             coll.update(dict(uid=uid, pid=pid, tid=tid, qid=qid), {"$set": {"info": question_info}})
         coll = conn.get_coll("question_info_coll")
         # todo id意为之前存在的_id 冗余字段
-        delete_num = coll.delete_many(dict(uid=uid, pid=pid, tid=tid, qid=qid))
-        insert_num = coll.insert_many(new_items)
-        return dict(delete_num=delete_num, insert_num=insert_num)
+        coll.delete_many(dict(uid=uid, pid=pid, tid=tid, qid=qid))
+        new_items = [{**dict(uid=uid, pid=pid, tid=tid, qid=qid), **item} for item in new_items]
+        coll.insert_many(new_items)
+        return
 
 
 class UploadApplyColl(object):
