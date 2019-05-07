@@ -212,6 +212,18 @@ def TYPE_CHECK(types):
 
     return run
 
+def TYPE_OR_NONE(types):
+    #指定类型或者为空
+    def run(v):
+        if isinstance(v, types):
+            return True
+        elif v is None:
+            return True
+        else:
+            return False
+
+    return run
+
 
 class SimpleInputValidation(object):
     require = {}

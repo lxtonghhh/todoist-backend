@@ -26,4 +26,5 @@ class QuestionUpdateForm(SimpleInputValidation):
     )
 
     def validate_after(self):
-        pass
+        if not self.get('content'):
+            self.args['content'] = []

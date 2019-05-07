@@ -312,9 +312,12 @@ class QuestionColl(object):
     def check_qid(conn, uid, pid, tid, qid):
         coll = conn.get_coll("question_coll")
         doc = coll.find_one(dict(uid=uid, pid=pid, tid=tid, qid=qid))
+        print(dict(uid=uid, pid=pid, tid=tid, qid=qid))
         if doc:
+            print(2)
             return True
         else:
+            print(3)
             return False
 
 
@@ -372,6 +375,7 @@ class QuestionInfoColl(object):
         if not new_items:
             return
         if not QuestionColl.check_qid(conn, uid, pid, tid, qid):
+            print(1)
             raise CommonError(msg="问题{qid}不存在".format(qid=qid))
         if question_info:
             coll = conn.get_coll("question_coll")
@@ -523,3 +527,86 @@ class UploadCheckColl(object):
                 coll.update(dict(uid=uid, pid=pid, tid=tid, commit_id=commit_id),
                             {"$set": {"res": result[0], "url": result[1]}})
         return citems
+
+
+class LabelColl(object):
+    """
+    coll: 'label_coll'标签表
+    "pid": "0",->项目决定标签集合
+    "lid": "0",
+    "label": "姓名",
+    "name": "name",
+    "type": "str"/"int"/"enum",
+    "options": null/[],仅enum是[]
+    "level": "task"/"question"/"annotation"
+
+    """
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def all_labels(conn, pid):
+        coll = conn.get_coll("label_coll")
+        docs = coll.find(dict(pid=pid))
+        return docs_to_list(docs)
+
+    @staticmethod
+    def add_label(conn, pid, label, name, type, options, level, uid='admin'):
+        """
+        默认uid, pid, tid合法 qid为commit_id唯一但不一定连续
+        """
+        coll = conn.get_coll("label_coll")
+        if not ProjectColl.check_pid(conn, uid, pid):
+            raise CommonError(msg="项目{pid}不存在".format(pid=pid))
+        lid = LabelIdColl.get_lid(conn, pid)
+        new_label = dict(pid=pid, lid=lid, label=label, name=name, type=type, options=options, level=level)
+        coll.insert(new_label)
+        #insert会在其中新增_id字段
+        del new_label['_id']
+        print(new_label)
+        return new_label
+
+    @staticmethod
+    def update_label(conn, pid, lid, options):
+        coll = conn.get_coll("label_coll")
+        doc = coll.find_one(dict(pid=pid, lid=lid))
+        if not doc:
+            raise CommonError(msg="标签{lid}不存在".format(lid=lid))
+        else:
+            if doc['type'] != 'enum':
+                raise CommonError(msg="标签{lid}类型不为enum".format(lid=lid))
+            else:
+                coll.update(dict(pid=pid, lid=lid), {"$set": {"options": options}})
+
+    @staticmethod
+    def delete_label(conn, pid, lid):
+        coll = conn.get_coll("label_coll")
+        doc = coll.find_one(dict(pid=pid, lid=lid))
+        if not doc:
+            raise CommonError(msg="标签{lid}不存在".format(lid=lid))
+        else:
+            coll.delete_one(dict(pid=pid, lid=lid))
+
+
+class LabelIdColl(object):
+    """
+    coll: 'label_id_coll'标签id表
+    "pid": "0",->项目决定标签集合
+    "next_lid":"0"
+    """
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get_lid(conn, pid):
+        coll = conn.get_coll("label_id_coll")
+        doc = coll.find_one(dict(pid=pid))
+        if doc:
+            lid = int(doc['next_lid'])
+            coll.update(dict(pid=pid), {"$set": {"next_lid": lid + 1}})
+            return str(lid)
+        else:
+            coll.insert(dict(pid=pid, next_lid="1"))
+            return "0"
