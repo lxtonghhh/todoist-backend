@@ -6,6 +6,7 @@ from api.sdk.oss import get_tmp_token, check_object_exist, UPLOAD_AK_EXPIRE, get
 from bson.objectid import ObjectId
 
 ASCENDING = 1
+get_type = lambda x: x['info'].get('type', None) if x.get('info', None) else None
 
 
 def docs_to_list(docs, fields: list = None):
@@ -314,10 +315,8 @@ class QuestionColl(object):
         doc = coll.find_one(dict(uid=uid, pid=pid, tid=tid, qid=qid))
         print(dict(uid=uid, pid=pid, tid=tid, qid=qid))
         if doc:
-            print(2)
             return True
         else:
-            print(3)
             return False
 
 
@@ -330,7 +329,7 @@ class QuestionInfoColl(object):
     "tid":"0"->任务id
     "qid":"0"->同上传后的commit_id
     "info":{}
-    "content":{"nodes":[],"lines":[]}视类型而定
+    "content":{"info":{},"nodes":[],"lines":[]}视类型而定
     """
 
     @staticmethod
@@ -343,6 +342,37 @@ class QuestionInfoColl(object):
             raise CommonError(msg="问题{qid}不存在".format(qid=qid))
         docs = coll.find(dict(uid=uid, pid=pid, tid=tid, qid=qid))
         return docs_to_list(docs, fields=['id', 'info', 'content'])
+
+    @staticmethod
+    def choose_one_subquestion_by_type(conn, uid, pid, tid, type):
+        coll = conn.get_coll("question_info_coll")
+        if not TaskColl.check_tid(conn, uid, pid, tid):
+            raise CommonError(msg="任务{tid}不存在".format(tid=tid))
+
+        question_coll = conn.get_coll("question_coll")
+        questions = question_coll.find(dict(uid=uid, pid=pid, tid=tid))
+        if questions.count() == 0:
+            raise CommonError(msg="{type}类型题目已全部做完")
+        qid = None
+        for question in questions:
+            print(question['qid'])
+            annotaions = coll.find(dict(uid=uid, pid=pid, tid=tid, qid=question['qid']))
+            if annotaions.count() == 0:
+                qid = question['qid']
+                break
+            else:
+                types = [get_type(item) for item in annotaions]
+                print("types",types,question['qid'])
+                if type in types:
+                    print(type,'in',types)
+                    continue
+                else:
+                    print(type, 'not in', types)
+                    qid = question['qid']
+                    break
+        if not qid:
+            raise CommonError(msg="{type}类型题目已全部做完")
+        return qid
 
     @staticmethod
     def update_question(conn, uid, pid, tid, qid, question_info, new_items):
@@ -375,7 +405,6 @@ class QuestionInfoColl(object):
         if not new_items:
             return
         if not QuestionColl.check_qid(conn, uid, pid, tid, qid):
-            print(1)
             raise CommonError(msg="问题{qid}不存在".format(qid=qid))
         if question_info:
             coll = conn.get_coll("question_coll")
@@ -385,6 +414,38 @@ class QuestionInfoColl(object):
         coll.delete_many(dict(uid=uid, pid=pid, tid=tid, qid=qid))
         new_items = [{**dict(uid=uid, pid=pid, tid=tid, qid=qid), **item} for item in new_items]
         coll.insert_many(new_items)
+        return
+
+    @staticmethod
+    def tmp_update_question(conn, uid, pid, tid, qid, question_info, new_items):
+        """
+        注意一致性
+        增量更新question下的标注
+        :param question_info:{} 题目/一张图片的整体信息
+        :param new_items:
+            id意为之前存在的_id 冗余无用字段
+            [{
+                "id": "0",
+                "info": {"type":"1","color":"red"},
+                "content": {
+                    "nodes": [],
+                    "lines": []
+                }
+            }]
+        subquestion中搜索对应type 替换或者增加
+        """
+
+        if not new_items:
+            return
+        if not QuestionColl.check_qid(conn, uid, pid, tid, qid):
+            raise CommonError(msg="问题{qid}不存在".format(qid=qid))
+        if question_info:
+            coll = conn.get_coll("question_coll")
+            coll.update(dict(uid=uid, pid=pid, tid=tid, qid=qid), {"$set": {"info": question_info}})
+        coll = conn.get_coll("question_info_coll")
+        for item in new_items:
+            coll.insert(
+                dict(uid=uid, pid=pid, tid=tid, qid=qid, id="0", info=item['info'], content=item['content']))
         return
 
 
@@ -562,7 +623,7 @@ class LabelColl(object):
         lid = LabelIdColl.get_lid(conn, pid)
         new_label = dict(pid=pid, lid=lid, label=label, name=name, type=type, options=options, level=level)
         coll.insert(new_label)
-        #insert会在其中新增_id字段
+        # insert会在其中新增_id字段
         del new_label['_id']
         print(new_label)
         return new_label
