@@ -8,8 +8,10 @@ headers = {
 URL = 'https://sm-breeze-public.oss-cn-shenzhen.aliyuncs.com/source%2Fadmin%2F1%2F0%2F4.jpg?OSSAccessKeyId=LTAIAVwi7Mh67lZm&Expires=1556724315&Signature=3G27MDZH5yC9fiLnH8Q5ZzDcR1M%3D'
 LOCAL_URL = 'http://127.0.0.1:8000/api/v1/source/upload'
 ALIYUN_HOST= "http://112.74.160.190:8002"
-HOST='http://127.0.0.1:8000'
-
+HOST=ALIYUN_HOST
+UID="admin"
+PID="1"
+TID="5"
 def put_file_to_oss(url, filename):
     with open(filename, 'rb') as f:
         res = requests.put(url, f, headers=headers)
@@ -23,7 +25,7 @@ def post_filr_to_local(url, filename):
         print(res.status_code, res.text)
 
 
-def apply(uid='admin', pid='1', tid='0'):
+def apply(uid=UID, pid=PID, tid=TID):
     url = HOST + "/api/v1/source/apply"
     res = requests.post(url, json=dict(uid=uid, pid=pid, tid=tid), headers=headers)
     if res.status_code == 200:
@@ -32,7 +34,7 @@ def apply(uid='admin', pid='1', tid='0'):
         return None
 
 
-def check(commit_id, uid='admin', pid='1', tid='0', ):
+def check(commit_id,uid=UID, pid=PID, tid=TID):
     url = HOST + "/api/v1/source/check"
     res = requests.post(url, json=dict(uid=uid, pid=pid, tid=tid, content=[commit_id]), headers=headers)
     print(res.text)
@@ -42,13 +44,12 @@ def check(commit_id, uid='admin', pid='1', tid='0', ):
         return None
 
 
-def update_question_info(qid, info, uid='admin', pid='1', tid='0', ):
+def update_question_info(qid, info, uid=UID, pid=PID, tid=TID):
     url = HOST + "/api/v1/question/commit"
     res = requests.post(url, json=dict(uid=uid, pid=pid, tid=tid, qid=qid, info=info, content=[
         {
             "id": "0",
             "info": {
-                "size": 12
             },
             "content": {
                 "nodes": [],
@@ -69,14 +70,15 @@ if __name__ == '__main__':
     elif i == 2:
         post_filr_to_local(url=LOCAL_URL, filename='./static/4.zip')
     elif i == 3:
-        for i in range(19):
+        for i in range(1,9):
             r = apply()
             commit_id = r['commit_id']
             url = r['url']
-            put_file_to_oss(url, filename='./static/3.jpg')
+            put_file_to_oss(url, filename=f'./static/car/{i}.jpg'.format(i=i))
+            print(commit_id)
             if commit_id:
                 if check(commit_id):
                     print(
-                        update_question_info(qid=commit_id, info=dict(enlarge=True, )))
+                        update_question_info(qid=commit_id, info=dict(name="test")))
             else:
                 print('失败')

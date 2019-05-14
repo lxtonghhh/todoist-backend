@@ -19,3 +19,10 @@ if __name__ == '__main__':
     print(get_type(x))
     if {}:
         print({})
+    print(id(1))
+    d={1:"111",3:40}
+    for key in d.keys():
+        print(key,id(key),id(d[key]))
+    a=[1,2,3]
+    for i in a:
+        print(hex(id(i)))
