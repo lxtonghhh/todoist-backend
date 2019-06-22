@@ -30,6 +30,20 @@ class QuestionUpdateForm(SimpleInputValidation):
             self.args['content'] = []
 
 
+class QuestionAddForm(SimpleInputValidation):
+    require = dict(
+        uid=LENGTH(1, 64),
+        pid=LENGTH(1, 64),
+        tid=LENGTH(1, 64),
+        qid=LENGTH(1, 64),
+        info=DICT,
+        url=LENGTH(1, 1024),
+    )
+
+    def validate_after(self):
+        pass
+
+
 class TmpQuestionForm(SimpleInputValidation):
     require = dict(
         uid=LENGTH(1, 64),

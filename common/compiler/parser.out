@@ -1,0 +1,136 @@
+Created by PLY version 3.11 (http://www.dabeaz.com/ply)
+
+Grammar
+
+Rule 0     S' -> commands
+Rule 1     commands -> empty
+Rule 2     commands -> commands command
+Rule 3     command -> heatswitch
+Rule 4     command -> targetset
+Rule 5     heatswitch -> TOKHEAT STATE
+Rule 6     targetset -> TOKTARGET TOKTEMPRATURE NUMBER
+Rule 7     empty -> <empty>
+
+Terminals, with rules where they appear
+
+NUMBER               : 6
+STATE                : 5
+TOKHEAT              : 5
+TOKTARGET            : 6
+TOKTEMPRATURE        : 6
+error                : 
+
+Nonterminals, with rules where they appear
+
+command              : 2
+commands             : 2 0
+empty                : 1
+heatswitch           : 3
+targetset            : 4
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . commands
+    (1) commands -> . empty
+    (2) commands -> . commands command
+    (7) empty -> .
+
+    TOKHEAT         reduce using rule 7 (empty -> .)
+    TOKTARGET       reduce using rule 7 (empty -> .)
+    $end            reduce using rule 7 (empty -> .)
+
+    commands                       shift and go to state 1
+    empty                          shift and go to state 2
+
+state 1
+
+    (0) S' -> commands .
+    (2) commands -> commands . command
+    (3) command -> . heatswitch
+    (4) command -> . targetset
+    (5) heatswitch -> . TOKHEAT STATE
+    (6) targetset -> . TOKTARGET TOKTEMPRATURE NUMBER
+
+    TOKHEAT         shift and go to state 6
+    TOKTARGET       shift and go to state 7
+
+    command                        shift and go to state 3
+    heatswitch                     shift and go to state 4
+    targetset                      shift and go to state 5
+
+state 2
+
+    (1) commands -> empty .
+
+    TOKHEAT         reduce using rule 1 (commands -> empty .)
+    TOKTARGET       reduce using rule 1 (commands -> empty .)
+    $end            reduce using rule 1 (commands -> empty .)
+
+
+state 3
+
+    (2) commands -> commands command .
+
+    TOKHEAT         reduce using rule 2 (commands -> commands command .)
+    TOKTARGET       reduce using rule 2 (commands -> commands command .)
+    $end            reduce using rule 2 (commands -> commands command .)
+
+
+state 4
+
+    (3) command -> heatswitch .
+
+    TOKHEAT         reduce using rule 3 (command -> heatswitch .)
+    TOKTARGET       reduce using rule 3 (command -> heatswitch .)
+    $end            reduce using rule 3 (command -> heatswitch .)
+
+
+state 5
+
+    (4) command -> targetset .
+
+    TOKHEAT         reduce using rule 4 (command -> targetset .)
+    TOKTARGET       reduce using rule 4 (command -> targetset .)
+    $end            reduce using rule 4 (command -> targetset .)
+
+
+state 6
+
+    (5) heatswitch -> TOKHEAT . STATE
+
+    STATE           shift and go to state 8
+
+
+state 7
+
+    (6) targetset -> TOKTARGET . TOKTEMPRATURE NUMBER
+
+    TOKTEMPRATURE   shift and go to state 9
+
+
+state 8
+
+    (5) heatswitch -> TOKHEAT STATE .
+
+    TOKHEAT         reduce using rule 5 (heatswitch -> TOKHEAT STATE .)
+    TOKTARGET       reduce using rule 5 (heatswitch -> TOKHEAT STATE .)
+    $end            reduce using rule 5 (heatswitch -> TOKHEAT STATE .)
+
+
+state 9
+
+    (6) targetset -> TOKTARGET TOKTEMPRATURE . NUMBER
+
+    NUMBER          shift and go to state 10
+
+
+state 10
+
+    (6) targetset -> TOKTARGET TOKTEMPRATURE NUMBER .
+
+    TOKHEAT         reduce using rule 6 (targetset -> TOKTARGET TOKTEMPRATURE NUMBER .)
+    TOKTARGET       reduce using rule 6 (targetset -> TOKTARGET TOKTEMPRATURE NUMBER .)
+    $end            reduce using rule 6 (targetset -> TOKTARGET TOKTEMPRATURE NUMBER .)
+

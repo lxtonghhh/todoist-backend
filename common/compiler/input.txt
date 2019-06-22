@@ -1,0 +1,10 @@
+
+
+int a =1;
+func myFunction(){
+	int b="中文";
+	print(10);
+	return 1
+}
+int c=a+b;
+int d="sssssss;

@@ -1,4 +1,5 @@
 from bson.objectid import ObjectId
+import json, os
 
 
 def remove_none_from(obj) -> dict:
@@ -21,28 +22,26 @@ def reorderLogFiles(logs):
         if con[0].isdigit():
             dd.append(item)
         else:
-            ad.append(dict(index=index, content=con,prefix=ide))
-    ad.sort(key=lambda x:( x['content'],x['prefix']))
+            ad.append(dict(index=index, content=con, prefix=ide))
+    ad.sort(key=lambda x: (x['content'], x['prefix']))
     o = [logs[item['index']] for item in ad]
     o += dd
     return o
 
 
 get_type = lambda x: x['info'].get('type', None) if x.get('info', None) else None
+def f1():
+    #得到json
+    for i in range(1, 8):
+        l = []
+        dfile = "lane" + str(i) + ".json"
+        sfile="F://lane" + str(i)
+        with open(dfile, "w") as f:
+            for filename in os.listdir(sfile):
+                print(filename)
+                l.append(filename.split(".")[0])
+            json.dump(dict(content=l), f)
+
 if __name__ == '__main__':
-    """
-        x = {"info": {"type": 1}}
-    print(get_type(x))
-    if {}:
-        print({})
-    print(id(1))
-    d={1:"111",3:40}
-    for key in d.keys():
-        print(key,id(key),id(d[key]))
-    a=[1,2,3]
-    for i in a:
-        print(hex(id(i)))
-    
-    """
-    logs = ["a1 9 2 3 1", "g1 act car", "zo4 4 7", "ab1 off key dog", "a8 act zoo"]
-    print(reorderLogFiles(logs))
+    all_file_name = ""
+

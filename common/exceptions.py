@@ -14,3 +14,10 @@ class CommonError(Exception):
 
         def __str__(self):
             return '错误：{0}'.format(self.msg)
+
+class ResponseException(Exception):
+    def __init__(self, sc, message, data=None, exception=None, **kwargs):
+        super().__init__(sc, message, data, exception)
+        self.message = message
+        self.sc = sc
+        self.data = data

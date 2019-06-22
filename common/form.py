@@ -250,7 +250,6 @@ class SimpleInputValidation(object):
                 self.args['uid'] = request.uid
         self.args.update(kwargs)
         self.need_after = need_after
-        print('获取到参数', self.args)
 
     def _parse_query_dict(self, query):
         for k, v in dict.items(query):
@@ -281,7 +280,6 @@ class SimpleInputValidation(object):
         return value
 
     def validate(self):
-        print(self.require.items())
         for key, pattern in self.require.items():
             if key not in self.args:
                 raise ValidationError(msg="%s is required" % key)
@@ -346,118 +344,3 @@ class SimpleInputValidation(object):
             raise ValidationError(msg="%s is required" % item)
 
 
-class InputValidation(object):
-    require = {}
-    not_require = {}
-    model = None
-
-    def __init__(self, request=None, **kwargs):
-        self.args = {}
-        if request:
-            self.request = request
-
-            # to fix list args
-            self._parse_query_dict(request.GET)
-            self._parse_query_dict(request.POST)
-
-            if hasattr(request, "JSON"):
-                self.args.update(request.JSON)
-            if hasattr(request, "PUT"):
-                self._parse_query_dict(request.PUT)
-            if hasattr(request, "uid"):
-                self.args['uid'] = request.uid
-        self.args.update(kwargs)
-
-    def _parse_query_dict(self, query):
-        for k, v in dict.items(query):
-            self.args[k] = v[0] if len(v) == 1 else v
-
-    def _set_new_value(self, key, new_val):
-        if isinstance(new_val, dict):
-            self.args.update(new_val)
-        else:
-            self.args[key] = new_val
-
-    def _start_validate(self, key, pattern, value):
-        if not isinstance(pattern, list):
-            pattern = [pattern]
-        for validate in pattern:
-            if callable(validate):
-                try:
-                    r = validate(value)
-                except TypeError:
-                    r = validate(value, self)
-                if isinstance(r, tuple):
-                    value = r[1]
-                    r = r[0]
-                if not r:
-                    raise ValidationError(msg="%s is invalid" % key)
-            else:
-                raise Exception("should not be here")
-        return value
-
-    def validate(self):
-        for key, pattern in self.require.items():
-            if key not in self.args:
-                raise ValidationError(msg="%s is required" % key)
-            value = self.args[key]
-            new_val = self._start_validate(key, pattern, value) if pattern else None
-            if new_val is not None:
-                self._set_new_value(key, new_val)
-
-        for key, pattern in self.not_require.items():
-            if key not in self.args:
-                continue
-            else:
-                value = self.args[key]
-                new_val = self._start_validate(key, pattern, value) if pattern else None
-                if new_val is not None:
-                    self._set_new_value(key, new_val)
-
-        self.validate_after()
-        return self
-
-    def to_model(self, instance=None, fields=None, exclude=None):
-        """
-        Construct and return a strategy instance from the bound , but do not save the returned instance to the database.
-        """
-        from django.db import models
-
-        if instance is None:
-            if self.model is None:
-                raise ValidationError(msg="model can't be None")
-            else:
-                instance = self.model()
-
-        opts = instance._meta
-
-        for f in opts.fields:
-            if not f.editable or isinstance(f, models.AutoField) or f.name not in self.args:
-                continue
-            if fields is not None and f.name not in fields:
-                continue
-            if exclude and f.name in exclude:
-                continue
-            f.save_form_data(instance, self.args[f.name])
-        return instance
-
-    def validate_after(self):
-        pass
-
-    def get(self, k, default=None):
-        return self.args.get(k, default)
-
-    __iter__ = lambda x: x.args.__iter__()
-    __len__ = lambda x: x.args.__len__()
-    __getitem__ = lambda x, k: x.args.__getitem__(k)
-    __setitem__ = lambda x, k, value: x.args.__setitem__(k, value)
-    __delitem__ = lambda x, k: x.args.__delitem__(k)
-    __contains__ = lambda x, k: x.args.__contains__(k)
-
-    def __getattr__(self, item):
-        if item in self.args:
-            return self.args[item]
-        else:
-            raise ValidationError(msg="%s is required" % item)
-
-    # __setattr__ = lambda x, k, v: x.args.__setitem__(k, v)

@@ -11,7 +11,8 @@ HEADERS = {
 URL = 'https://sm-breeze-public.oss-cn-shenzhen.aliyuncs.com/source%2Fadmin%2F1%2F0%2F4.jpg?OSSAccessKeyId=LTAIAVwi7Mh67lZm&Expires=1556724315&Signature=3G27MDZH5yC9fiLnH8Q5ZzDcR1M%3D'
 LOCAL_URL = 'http://127.0.0.1:8000'
 ALIYUN_HOST = "http://112.74.160.190:8002"
-HOST = ALIYUN_HOST
+TENGXUN = "http://132.232.62.227:80"
+HOST = TENGXUN
 
 COCO_PID = "2"
 COCO_TID = "0"
@@ -183,40 +184,45 @@ MAP1 = {'0': '104751.jpg', '1': '117584.jpg', '2': '120428.jpg', '3': '131661.jp
         '75': '75595.jpg', '76': '77296.jpg', '77': '81210.jpg', '78': '85247.jpg', '79': '89032.jpg',
         '80': '90732.jpg', '81': '92257.jpg', '82': '92678.jpg', '83': '94745.jpg'}
 
+import time
 
-def upload_question_from_dir(pid, tid, dir_path=f"../kuwa/lane1/", map_json_name='kuwa'):
+
+def upload_question_from_dir(pid, start_tid, dir_path=f"../kuwa/lane1/", map_json_name='kuwa'):
+    # 第一批1000张每100张漏了1张导致最后一组只有90张 并且最后一组kuwa10没有写map
     filename_qid_dict = {}
     c = 0
-    group = 1
+    group = start_tid
     tid = str(group)
     for fileName in os.listdir(dir_path):
+        print('===开始上传文件 tid->', tid, fileName)
+        r = apply(pid=pid, tid=tid)
+        commit_id = r['commit_id']
+        url = r['url']
+        try:
+            put_file_to_oss(url, filename=dir_path + fileName)
+        except:
+            time.sleep(5)
+            put_file_to_oss(url, filename=dir_path + fileName)
+        print(commit_id)
+        if commit_id:
+            if check(pid=pid, tid=tid, commit_id=commit_id):
+                print(
+                    update_question_info(pid=pid, tid=tid, qid=commit_id, info=dict(name="kuwa")))
+                filename_qid_dict[commit_id] = fileName
+        else:
+            print('失败')
+        c += 1
         if c == 100:
             print("======完成一组 tid->", tid)
             print(filename_qid_dict)
-            with open(map_json_name + tid + '.json', 'w') as f:
+            with open(map_json_name + pid + "_" + tid + '.json', 'w') as f:
                 json.dump(filename_qid_dict, f)
             c = 0
             filename_qid_dict = {}
             group += 1
             tid = str(group)
         else:
-            if group == 1:
-                pass
-            else:
-                print('======开始上传文件 tid->', tid, fileName)
-                r = apply(pid=pid, tid=tid)
-                commit_id = r['commit_id']
-                url = r['url']
-                put_file_to_oss(url, filename=dir_path + fileName)
-                print(commit_id)
-                if commit_id:
-                    if check(pid=pid, tid=tid, commit_id=commit_id):
-                        print(
-                            update_question_info(pid=pid, tid=tid, qid=commit_id, info=dict(name="kuwa")))
-                        filename_qid_dict[commit_id] = fileName
-                else:
-                    print('失败')
-            c += 1
+            pass
 
 
 def upload_question(pid, tid, set_file_name='test_set2.json', dir_path=f"../static/coco2/",
@@ -295,7 +301,8 @@ def output_main():
     conn = MongoDBBase(config=MONGODB_CONFIG)
 
     annotations = []
-    for i in range(10, 30):
+    for i in range(2, 203):
+        print("====导出", i)
         citems = output(pid, str(i), '', conn)
         annotations += citems
     with open("../static/coco.json", 'r', encoding='utf-8') as f:
@@ -305,12 +312,49 @@ def output_main():
             json.dump(d, f2)
 
 
+def add_question_without_upload(tid, pid="4"):
+    mongo_conn = MongoDBBase(config=MONGODB_CONFIG)
+    coll = mongo_conn.get_coll("question_coll")
+    for i in range(0, 100):
+        qid = str(i)
+        coll.insert(dict(uid="admin", pid=pid, tid=tid, qid=qid, info=dict(name="kuwa"), url=""))
+    print("pid: ",pid,"tid: ",tid,"新建题目完成")
+
 if __name__ == '__main__':
-    upload_question_from_dir(pid="3", tid="1", dir_path=f"../kuwa/lane1/", map_json_name='kuwa')
+    """
+    #酷哇可视化新建题目 不用上传图片
+    for t in range(12,31):
+        tid=str(t)
+        add_question_without_upload(tid)
+    exit(1)
+    #上传酷哇
+    upload_question_from_dir(pid="3", start_tid=61, dir_path=f"../kuwa/lane61-70/", map_json_name='kuwa')
+    exit(1)
+    upload_question_from_dir(pid="4", start_tid=2, dir_path=f"../kuwa/lane2-10/", map_json_name='kuwa')
+    exit(1)
+    #导出coco
+    output_main()
+    exit(1)
+    with open("./output.json","r") as f:
+        d=json.load(f)
+        a=d['annotations']
+        print(len(a))
+    exit(1)
+    """
+
+    upload_question_from_dir(pid="3", start_tid=141, dir_path=f"../kuwa/lane141-142/", map_json_name='kuwa')
+    exit(1)
+    with open("./output.json", "r") as f:
+        d = json.load(f)
+        a = d['annotations']
+        print(len(a))
     exit(1)
     output_main()
     exit(1)
-    for g in range(42, 51):
+    upload_question_from_dir(pid="3", start_tid=84, dir_path=f"../kuwa/lane84-90/", map_json_name='kuwa')
+    exit(1)
+    # 上传coco
+    for g in range(200, 210):
         group = g
         set_name = "test_set" + str(group) + '.json'
         start = 400 + (group - 6) * 50

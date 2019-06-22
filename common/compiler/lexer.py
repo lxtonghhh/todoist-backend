@@ -267,9 +267,13 @@ def main(mode, file_name):
         f.writelines(table_lines)
 
 
-def server_main(input_str, mode='my'):
+def server_main_lexer(input_str, mode='my'):
     global input_lines
     input_lines = input_str.split("\n")
+    global char_now
+    global line_now
+    char_now = -1
+    line_now = 0
     output_lines = []
     output_lines.append("======词法分析输出======\n")
     try:
